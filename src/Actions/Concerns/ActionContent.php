@@ -57,7 +57,6 @@ trait ActionContent
     {
         parent::setUp();
 
-        $this->configureInfolist();
         $this->configureModal();
         $this->activitiesUsing        = null;
         $this->modifyTitleUsing       = null;
@@ -107,25 +106,6 @@ trait ActionContent
                 });
         };
     }
-    private function configureInfolist(): void
-    {
-        $this->infolist(function (?Model $record, Schema $schema) {
-            $activities = $this->getActivityLogRecord($record, $this->getWithRelations());
-
-            $formattedActivities = $activities->map(function ($activity) {
-                return [
-                    'id'           => $activity->id,
-                    'log_name'     => $activity->log_name,
-                    'updated_at'   => $activity->updated_at,
-                    'activityData' => $activity->activityData,
-                ];
-            })->toArray();
-
-            return $schema
-                ->state(['activities' => $formattedActivities])
-                ->schema($this->getSchema());
-        });
-    }
 
     private function configureModal(): void
     {
@@ -136,9 +116,23 @@ trait ActionContent
             ->icon('heroicon-o-bell-alert');
     }
 
-    public function getSchema(): array
+    public function getSchema(Schema $schema): ?Schema
     {
-        return [
+        $record = $this->getRecord();
+        $activities = $this->getActivityLogRecord($record, $this->getWithRelations());
+
+        $formattedActivities = $activities->map(function ($activity) {
+            return [
+                'id'           => $activity->id,
+                'log_name'     => $activity->log_name,
+                'updated_at'   => $activity->updated_at,
+                'activityData' => $activity->activityData,
+            ];
+        })->toArray();
+        $schema->state(['activities' => $formattedActivities]);
+
+
+        return $schema->components([
             TimeLineRepeatableEntry::make('activities')
                 ->schema([
                     TimeLineIconEntry::make('activityData.event')
@@ -160,7 +154,7 @@ trait ActionContent
                         ->since()
                         ->badge(),
                 ]),
-        ];
+        ]);
     }
 
     public function withRelations(?array $relations = null): ?Action
